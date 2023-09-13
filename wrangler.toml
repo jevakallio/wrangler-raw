@@ -1,0 +1,14 @@
+name = "jevakallio-wrangler-raw"
+main = "./src/index.mjs"
+compatibility_date = "2022-09-08"
+
+# routes = [
+#   { custom_domain = true, zone_name = "partykit.dev", pattern = "jevakallio-wrangler-raw.partykit.dev" }
+# ]
+
+[durable_objects]
+bindings = [{ name = "COUNTER", class_name = "Counter" }]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["Counter"]
