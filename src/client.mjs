@@ -24,17 +24,22 @@ export default /* html*/ `
 
       const url = new URL(window.location);
       const room = url.searchParams.get("room") ?? "default";
-
       const protocol = url.hostname === "localhost" || url.hostname === "0.0.0.0" || url.hostname === "127.0.0.1" ? "ws" : "wss";
+      const socketUrl = protocol + "://" + url.host + "?room=" + room;
 
-      const server = protocol + "://" + url.host + "?room=" + room;
-      const conn = new WebSocket(server);
+      const conn = new WebSocket(socketUrl);
 
-      conn.addEventListener("message", (event) =>
-        add("Message -> " + event.data)
-      );
+      conn.addEventListener("message", (event) => add("Message: " + event.data));
+      conn.addEventListener("open", () => add("Connected to " + socketUrl));
 
-      conn.addEventListener("open", () => add("Connected to " + server));
+      const closeOnUnload = url.searchParams.has("close");
+      if (closeOnUnload) {
+        add("This session will call conn.close() on unload");
+        window.addEventListener("beforeunload", () => {
+          console.log("Closing websocket manually");
+          conn.close();
+        });
+      }
     </script>
   </body>
 </html>

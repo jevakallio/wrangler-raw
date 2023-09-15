@@ -24,19 +24,6 @@ export class Counter {
     this.pushEvent("Durable Object constructor");
   }
 
-  async pushEvent(event) {
-    const sockets = [...this.state.getWebSockets()];
-    const open = sockets.filter(
-      (s) => s.readyState === WebSocket.READY_STATE_OPEN
-    );
-
-    const message = `${event} - sockets: ${sockets.length} total (${open.length} open)`;
-    console.log(message);
-    for (const socket of sockets) {
-      socket.send(message);
-    }
-  }
-
   async webSocketClose(ws) {
     this.pushEvent("webSocketClose");
   }
@@ -49,15 +36,6 @@ export class Counter {
     this.pushEvent("webSocketMessage: " + msg);
   }
 
-  getConnections() {
-    const sockets = [...this.state.getWebSockets()];
-    const open = sockets.filter(
-      (s) => s.readyState === WebSocket.READY_STATE_OPEN
-    );
-
-    return `${sockets.length} sockets (${open.length} open)`;
-  }
-
   // Handle HTTP requests from clients.
   async fetch(request) {
     // Create the websocket pair for the client
@@ -67,5 +45,18 @@ export class Counter {
     this.pushEvent("webSocketConnect (fetch)");
 
     return new Response(null, { status: 101, webSocket: clientWebSocket });
+  }
+
+  async pushEvent(event) {
+    const sockets = [...this.state.getWebSockets()];
+    const open = sockets.filter(
+      (s) => s.readyState === WebSocket.READY_STATE_OPEN
+    );
+
+    const message = `${event} - sockets: ${sockets.length} total (${open.length} open)`;
+    console.log(message);
+    for (const socket of sockets) {
+      socket.send(message);
+    }
   }
 }
