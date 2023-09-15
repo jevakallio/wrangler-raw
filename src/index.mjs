@@ -1,11 +1,18 @@
+import html from "./client.mjs";
 // Worker
 export default {
   async fetch(request, env) {
+    // serve html page
     if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
-      return new Response("Please connect with WebSockets!!", { status: 404 });
+      return new Response(html, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+        },
+      });
     }
 
-    const obj = env.COUNTER.get(env.COUNTER.idFromName("A"));
+    const name = new URL(request.url).searchParams.get("room") || "default";
+    const obj = env.COUNTER.get(env.COUNTER.idFromName(name));
     return obj.fetch(request);
   },
 };
@@ -18,12 +25,15 @@ export class Counter {
   }
 
   async pushEvent(event) {
-    console.log(event);
+    const sockets = [...this.state.getWebSockets()];
+    const open = sockets.filter(
+      (s) => s.readyState === WebSocket.READY_STATE_OPEN
+    );
 
-    // send the event to clients so we can verify the callbacks do run
-    const sockets = this.state.getWebSockets();
+    const message = `${event} - sockets: ${sockets.length} total (${open.length} open)`;
+    console.log(message);
     for (const socket of sockets) {
-      socket.send(event);
+      socket.send(message);
     }
   }
 
@@ -39,33 +49,21 @@ export class Counter {
     this.pushEvent("webSocketMessage: " + msg);
   }
 
+  getConnections() {
+    const sockets = [...this.state.getWebSockets()];
+    const open = sockets.filter(
+      (s) => s.readyState === WebSocket.READY_STATE_OPEN
+    );
+
+    return `${sockets.length} sockets (${open.length} open)`;
+  }
+
   // Handle HTTP requests from clients.
   async fetch(request) {
-    const url = new URL(request.url);
-    const hibernate = url.searchParams.get("hibernate") === "true";
-
     // Create the websocket pair for the client
     const { 0: clientWebSocket, 1: serverWebSocket } = new WebSocketPair();
+    this.state.acceptWebSocket(serverWebSocket);
 
-    if (hibernate) {
-      this.state.acceptWebSocket(serverWebSocket);
-    } else {
-      serverWebSocket.addEventListener("message", (e) =>
-        this.webSocketMessage(serverWebSocket, e.data)
-      );
-
-      serverWebSocket.addEventListener("close", () =>
-        this.webSocketClose(serverWebSocket)
-      );
-
-      serverWebSocket.addEventListener("error", (e) =>
-        this.webSocketError(serverWebSocket)
-      );
-
-      serverWebSocket.accept();
-    }
-
-    this.pushEvent(hibernate ? "hibernating" : "NOT hibernating");
     this.pushEvent("webSocketConnect (fetch)");
 
     return new Response(null, { status: 101, webSocket: clientWebSocket });
